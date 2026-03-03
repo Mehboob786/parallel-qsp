@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 
 // ============================================================
 // MATH UTILITIES
@@ -42,7 +42,7 @@ function evalPoly(coeffs, x) {
 // Split polynomial P(x) into P_{<k}(x) and P_{>=k}(x)
 // P(x) = P_{<k}(x) + x^k * P_{>=k}(x)
 function splitPolynomial(coeffs, k) {
-  const _d = coeffs.length - 1;
+  const d = coeffs.length - 1;
   const P_low = coeffs.slice(0, k);       // degrees 0..k-1
   const P_high = coeffs.slice(k);          // degrees k..d => P_{>=k}
   // Pad P_low to length k
@@ -53,10 +53,10 @@ function splitPolynomial(coeffs, k) {
 // Find roots of a polynomial using companion matrix eigenvalues (numerical)
 // Uses power iteration / simplified approach for educational purposes
 function findRootsNumerical(coeffs) {
-  const _d = coeffs.length - 1;
-  if (_d === 0) return [];
-  if (_d === 1) return [-coeffs[0] / coeffs[1]];
-  if (_d === 2) {
+  const d = coeffs.length - 1;
+  if (d === 0) return [];
+  if (d === 1) return [-coeffs[0] / coeffs[1]];
+  if (d === 2) {
     const [c, b, a] = coeffs;
     const disc = b * b - 4 * a * c;
     if (disc >= 0) {
@@ -72,15 +72,15 @@ function findRootsNumerical(coeffs) {
 }
 
 function durandKerner(coeffs) {
-  const _d = coeffs.length - 1;
-  const lead = coeffs[_d];
+  const d = coeffs.length - 1;
+  const lead = coeffs[d];
   // Normalize
   const p = coeffs.map(c => c / lead);
   
   // Initial guesses on circle of radius slightly > 1
   let roots = [];
-  for (let i = 0; i < _d; i++) {
-    const angle = (2 * Math.PI * i) / _d + 0.1;
+  for (let i = 0; i < d; i++) {
+    const angle = (2 * Math.PI * i) / d + 0.1;
     roots.push(Complex.fromPolar(0.4 + Math.random() * 0.2, angle));
   }
 
@@ -88,13 +88,13 @@ function durandKerner(coeffs) {
   for (let iter = 0; iter < 200; iter++) {
     const newRoots = roots.map((r, i) => {
       // Evaluate polynomial at r
-      let pr = new Complex(p[_d]);
-      for (let j = _d - 1; j >= 0; j--) {
+      let pr = new Complex(p[d]);
+      for (let j = d - 1; j >= 0; j--) {
         pr = pr.mul(r).add(new Complex(p[j]));
       }
       // Product of (r - r_j) for j != i
       let prod = Complex.one;
-      for (let j = 0; j < _d; j++) {
+      for (let j = 0; j < d; j++) {
         if (j !== i) prod = prod.mul(r.sub(roots[j]));
       }
       if (prod.abs() < 1e-14) return r;
@@ -107,21 +107,21 @@ function durandKerner(coeffs) {
 
 // Factorize real non-negative polynomial R(x) into k factor polynomials
 // Returns k arrays of complex roots for each factor
-// function factorizePolynomial(coeffs, k) {
-//   const roots = findRootsNumerical(coeffs);
-//  // const _d = coeffs.length - 1;
+function factorizePolynomial(coeffs, k) {
+  const roots = findRootsNumerical(coeffs);
+  const d = coeffs.length - 1;
   
-//   // Separate roots: real (even multiplicity) and complex conjugate pairs
-//   // For real non-negative polynomial: roots come in pairs
-//   // We just split the roots into k groups
-//   const factorRoots = Array.from({ length: k }, () => []);
+  // Separate roots: real (even multiplicity) and complex conjugate pairs
+  // For real non-negative polynomial: roots come in pairs
+  // We just split the roots into k groups
+  const factorRoots = Array.from({ length: k }, () => []);
   
-//   roots.forEach((root, idx) => {
-//     factorRoots[idx % k].push(root);
-//   });
+  roots.forEach((root, idx) => {
+    factorRoots[idx % k].push(root);
+  });
   
-//   return factorRoots;
-// }
+  return factorRoots;
+}
 
 // Reconstruct polynomial from roots (monic)
 function polyFromRoots(roots, leadCoeff = 1) {
@@ -178,8 +178,8 @@ function qspSequence(phases, x) {
 // Least-squares QSP phase finding for a target polynomial
 // Uses gradient descent to find phases phi that realize the polynomial
 function findQSPPhases(targetCoeffs, numIter = 1000) {
-  const _d = targetCoeffs.length - 1;
-  const numPhases = _d + 1;
+  const d = targetCoeffs.length - 1;
+  const numPhases = d + 1;
   
   // Sample points
   const xs = Array.from({ length: 50 }, (_, i) => -1 + 2 * i / 49);
